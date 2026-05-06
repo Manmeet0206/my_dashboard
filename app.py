@@ -1,77 +1,93 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.express as px
 
 st.set_page_config(page_title="Sales Decline Tracker", layout="wide")
 
-st.title("📉 Sales Decline Tracker Dashboard")
+st.title("📉 Sales Decline Tracker PRO")
 
-# Upload file
-file = st.file_uploader("Upload your CSV file", type=["csv"])
+file = st.file_uploader("Upload CSV", type=["csv"])
 
 if file:
     df = pd.read_csv(file)
-
-    st.subheader("📊 Data Preview")
-    st.dataframe(df.head())
-
-    # Convert date
     df['Date'] = pd.to_datetime(df['Date'])
 
     # Sidebar filters
     st.sidebar.header("Filters")
-    region = st.sidebar.multiselect("Select Region", df['Region'].unique())
-    product = st.sidebar.multiselect("Select Product", df['Product'].unique())
+
+    date_range = st.sidebar.date_input("Select Date Range", [df['Date'].min(), df['Date'].max()])
+    region = st.sidebar.multiselect("Region", df['Region'].unique())
+    product = st.sidebar.multiselect("Product", df['Product'].unique())
+
+    # Apply filters
+    if len(date_range) == 2:
+        df = df[(df['Date'] >= pd.to_datetime(date_range[0])) & (df['Date'] <= pd.to_datetime(date_range[1]))]
 
     if region:
         df = df[df['Region'].isin(region)]
+
     if product:
         df = df[df['Product'].isin(product)]
 
-    # KPI
+    # KPIs
     total_sales = df['Sales'].sum()
     avg_sales = df['Sales'].mean()
 
-    # Decline %
     df_sorted = df.sort_values('Date')
     first = df_sorted['Sales'].iloc[0]
     last = df_sorted['Sales'].iloc[-1]
-    decline_pct = ((first - last) / first) * 100
+    decline = ((first - last) / first) * 100
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Sales", f"{total_sales:,.0f}")
     col2.metric("Average Sales", f"{avg_sales:,.2f}")
-    col3.metric("Decline %", f"{decline_pct:.2f}%")
+    col3.metric("Decline %", f"{decline:.2f}%")
 
-    # Trend line
+    # Trend chart (interactive)
     st.subheader("📈 Sales Trend")
-    fig, ax = plt.subplots()
-    df.groupby('Date')['Sales'].sum().plot(ax=ax)
-    st.pyplot(fig)
+    trend = df.groupby('Date')['Sales'].sum().reset_index()
+    fig = px.line(trend, x='Date', y='Sales')
+    st.plotly_chart(fig, use_container_width=True)
 
-    # Monthly comparison
-    st.subheader("📅 Monthly Comparison")
-    df['Month'] = df['Date'].dt.to_period('M')
-    monthly = df.groupby('Month')['Sales'].sum()
+    # Monthly chart
+    st.subheader("📅 Monthly Performance")
+    df['Month'] = df['Date'].dt.to_period('M').astype(str)
+    monthly = df.groupby('Month')['Sales'].sum().reset_index()
+    fig2 = px.bar(monthly, x='Month', y='Sales')
+    st.plotly_chart(fig2, use_container_width=True)
 
-    fig2, ax2 = plt.subplots()
-    monthly.plot(kind='bar', ax=ax2)
-    st.pyplot(fig2)
+    # Top & low products
+    st.subheader("🏆 Product Performance")
+    prod = df.groupby('Product')['Sales'].sum().reset_index()
+    top = prod.sort_values('Sales', ascending=False).head(5)
+    low = prod.sort_values('Sales').head(5)
 
-    # Decline detection
-    st.subheader("⚠️ Decline Detection")
+    col4, col5 = st.columns(2)
+    col4.write("Top Products")
+    col4.dataframe(top)
+
+    col5.write("Low Performing Products")
+    col5.dataframe(low)
+
+    # Decline alerts
+    st.subheader("⚠️ Decline Alerts")
     df['Change'] = df['Sales'].pct_change()
     decline_days = df[df['Change'] < 0]
 
-    st.write(f"Days with decline: {len(decline_days)}")
+    st.write(f"Decline instances: {len(decline_days)}")
     st.dataframe(decline_days[['Date', 'Sales', 'Change']])
 
-    # Heatmap
-    st.subheader("🔥 Correlation Heatmap")
-    fig3, ax3 = plt.subplots()
-    sns.heatmap(df.corr(numeric_only=True), annot=True, ax=ax3)
-    st.pyplot(fig3)
+    # Smart insight
+    st.subheader("🧠 Smart Insights")
+
+    if decline > 0:
+        st.warning("Sales are declining overall. Focus on low performing products.")
+    else:
+        st.success("Sales trend is stable or improving.")
+
+    # Download button
+    st.subheader("📥 Download Filtered Data")
+    st.download_button("Download CSV", df.to_csv(index=False), file_name="filtered_data.csv")
 
 else:
-    st.info("Upload a CSV file to start")
+    st.info("Upload CSV to begin")
