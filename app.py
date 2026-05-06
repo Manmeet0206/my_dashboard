@@ -9,26 +9,6 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 import io
 
-# ---------------- LOGIN SYSTEM ----------------
-def login():
-    st.title("🔐 AI Dashboard Login")
-
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-
-    if st.button("Login"):
-        if username == "admin" and password == "1234":
-            st.session_state["logged_in"] = True
-        else:
-            st.error("Invalid credentials")
-
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
-
-if not st.session_state["logged_in"]:
-    login()
-    st.stop()
-
 # ---------------- DATA ----------------
 @st.cache_data
 def generate_data():
@@ -37,8 +17,7 @@ def generate_data():
     noise = np.random.normal(0, 6, 120)
     sales = np.array(trend) + noise
 
-    df = pd.DataFrame({"Date": dates, "Sales": sales})
-    return df
+    return pd.DataFrame({"Date": dates, "Sales": sales})
 
 df = generate_data()
 
@@ -55,28 +34,6 @@ model.fit(X, y)
 
 future = model.predict(np.array(range(len(df), len(df)+30)).reshape(-1,1))
 future_dates = pd.date_range(df["Date"].iloc[-1], periods=30)
-
-# ---------------- PDF REPORT FUNCTION ----------------
-def create_pdf():
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer)
-    styles = getSampleStyleSheet()
-
-    content = []
-
-    content.append(Paragraph("Sales Dashboard Report", styles['Title']))
-    content.append(Spacer(1, 12))
-
-    content.append(Paragraph(f"Generated on: {datetime.now()}", styles['Normal']))
-    content.append(Spacer(1, 12))
-
-    content.append(Paragraph(f"Total Sales Records: {len(df)}", styles['Normal']))
-    content.append(Paragraph(f"Detected Anomalies: {df['Anomaly'].sum()}", styles['Normal']))
-    content.append(Paragraph(f"Average Sales: {df['Sales'].mean():.2f}", styles['Normal']))
-
-    doc.build(content)
-    buffer.seek(0)
-    return buffer
 
 # ---------------- UI ----------------
 st.title("📊 AI Sales Intelligence Dashboard")
@@ -109,15 +66,3 @@ fig.add_trace(go.Scatter(
 ))
 
 st.plotly_chart(fig, use_container_width=True)
-
-# ---------------- DOWNLOAD PDF ----------------
-st.subheader("📄 Export Report")
-
-pdf = create_pdf()
-
-st.download_button(
-    label="Download PDF Report",
-    data=pdf,
-    file_name="sales_report.pdf",
-    mime="application/pdf"
-)
