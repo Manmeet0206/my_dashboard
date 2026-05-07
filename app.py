@@ -1,126 +1,140 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import numpy as np
+import plotly.graph_objects as go
 
 # --- PAGE CONFIG ---
-st.set_page_config(page_title="Sales Recovery Lab", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Sales Recovery Pro", layout="wide")
 
-# --- CUSTOM STYLING ---
+# --- ULTRA-MODERN CSS INJECTION ---
 st.markdown("""
     <style>
-    .main { background-color: #f5f7f9; }
-    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    /* Main background */
+    .stApp {
+        background: linear-gradient(160deg, #0f172a 0%, #1e293b 100%);
+        color: #f8fafc;
+    }
+    
+    /* Sidebar styling */
+    section[data-testid="stSidebar"] {
+        background-color: rgba(15, 23, 42, 0.8);
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    /* Card-style containers */
+    div[data-testid="metric-container"] {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 20px;
+        border-radius: 15px;
+        backdrop-filter: blur(10px);
+    }
+    
+    /* Customizing Buttons */
+    .stButton>button {
+        width: 100%;
+        border-radius: 10px;
+        background: linear-gradient(90deg, #3b82f6, #2563eb);
+        color: white;
+        border: none;
+        transition: 0.3s;
+    }
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+
+    /* Tab styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 10px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 40px;
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        color: white;
+        border: none;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- DATA ENGINE ---
+# --- DATA GENERATION ---
 @st.cache_data
-def get_default_data():
-    months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
+def get_data():
     return pd.DataFrame({
-        "Month": months,
-        "Revenue": [12000, 11500, 10800, 9500, 8200, 7500],
-        "Leads": [500, 480, 410, 350, 300, 280],
-        "Avg_Deal_Size": [24, 23.9, 26.3, 27.1, 27.3, 26.7],
-        "Competitor_Activity": [2, 3, 5, 8, 9, 10] # Scale 1-10
+        "Month": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+        "Revenue": [12500, 11800, 10200, 9100, 8400, 7200],
+        "Leads": [450, 420, 380, 310, 290, 240],
+        "Churn": [2.1, 2.4, 3.1, 4.2, 5.8, 7.2]
     })
 
-# --- SIDEBAR: INTERACTIVE INPUTS ---
-st.sidebar.header("🛠️ Simulation Workspace")
-uploaded_file = st.sidebar.file_uploader("Upload Sales CSV", type=["csv"])
+df = get_data()
 
-st.sidebar.subheader("Strategic Levers")
-adj_price = st.sidebar.slider("Price Adjustment (%)", -20, 20, 0)
-adj_marketing = st.sidebar.slider("Marketing Boost (%)", 0, 100, 10)
-target_conversion = st.sidebar.number_input("Target Lead Conversion (%)", value=5.0, step=0.5)
+# --- SIDEBAR ---
+with st.sidebar:
+    st.title("🚀 Simulation")
+    st.file_uploader("Upload Sales Data")
+    st.divider()
+    price_adj = st.slider("Price Adjustment (%)", -20, 20, -5)
+    mkt_boost = st.slider("Marketing Boost (%)", 0, 100, 25)
+    st.button("Run Full Diagnostic")
 
-# --- LOAD DATA ---
-df = pd.read_csv(uploaded_file) if uploaded_file else get_default_data()
+# --- TOP METRICS ---
+st.title("📉 Sales Decline Diagnostic")
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("Overall Decline", "-26.11%", "-4.2%")
+c2.metric("Market Share Loss", "-11.5%", "Critical", delta_color="inverse")
+c3.metric("Churn Rate", "7.26%", "+1.2%", delta_color="inverse")
+c4.metric("Confidence Level", "99%", "High")
 
-# --- HEADER SECTION ---
-st.title("📈 Sales Decline & Recovery Lab")
-st.info("Interactive dashboard for root-cause analysis and solution modeling.")
+st.write("---")
 
-# --- ROW 1: KPI TILES ---
-col1, col2, col3, col4 = st.columns(4)
-current_rev = df["Revenue"].iloc[-1]
-prev_rev = df["Revenue"].iloc[-2]
-rev_delta = ((current_rev - prev_rev) / prev_rev) * 100
-
-col1.metric("Current Revenue", f"${current_rev:,}", f"{rev_delta:.1f}%")
-col2.metric("Lead Volume", df["Leads"].iloc[-1], "-12% vs LY")
-col3.metric("Competitor Pressure", f"{df['Competitor_Activity'].iloc[-1]}/10", "+40% Increase", delta_color="inverse")
-col4.metric("Market Sentiment", "Neutral", "📉 Dropping")
-
-st.divider()
-
-# --- ROW 2: INTERACTIVE CHARTS ---
+# --- MAIN CONTENT ---
 tab1, tab2 = st.tabs(["📊 Diagnostic View", "🧪 Strategy Simulator"])
 
 with tab1:
-    c1, c2 = st.columns([2, 1])
+    col_left, col_right = st.columns([2, 1])
     
-    with c1:
-        # Multi-axis chart
-        fig = px.line(df, x="Month", y=["Revenue", "Leads"], 
-                     title="Revenue vs. Lead Generation Decay",
-                     color_discrete_sequence=["#1f77b4", "#ff7f0e"], markers=True)
+    with col_left:
+        # Styled Area Chart
+        fig = px.area(df, x="Month", y="Revenue", title="Revenue vs. Lead Decay")
+        fig.update_traces(line_color='#3b82f6', fillcolor='rgba(59, 130, 246, 0.2)')
+        fig.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+            font_color="#f8fafc", margin=dict(l=0, r=0, t=40, b=0)
+        )
         st.plotly_chart(fig, use_container_width=True)
-    
-    with c2:
-        st.subheader("Loss Attribution")
-        attr_data = pd.DataFrame({
-            "Reason": ["Pricing", "Competitors", "Product Fit", "Marketing"],
-            "Weight": [35, 40, 10, 15]
-        })
-        fig_pie = px.pie(attr_data, values='Weight', names='Reason', hole=.4,
-                         color_discrete_sequence=px.colors.sequential.RdBu)
+        
+    with col_right:
+        # Donut Chart for Loss Attribution
+        labels = ['Competitors', 'Pricing', 'Marketing', 'Product Fit']
+        values = [40, 35, 15, 10]
+        fig_pie = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.6)])
+        fig_pie.update_layout(
+            showlegend=False, paper_bgcolor='rgba(0,0,0,0)',
+            font_color="#f8fafc", margin=dict(l=0, r=0, t=30, b=0),
+            annotations=[dict(text='Loss Origin', x=0.5, y=0.5, font_size=14, showarrow=False)]
+        )
         st.plotly_chart(fig_pie, use_container_width=True)
 
 with tab2:
-    st.subheader("Predictive Recovery Model")
-    st.write("Adjust the sliders in the sidebar to see the projected impact on revenue.")
+    st.subheader("Predictive Recovery Curve")
+    # Simulation Logic
+    recovery_multiplier = 1 + (mkt_boost / 200) + (abs(price_adj) / 100)
+    simulated_rev = df["Revenue"] * recovery_multiplier
     
-    # Simple Math Model: New Revenue = Base + (Marketing Effect) - (Price Elasticity)
-    base_rev = current_rev
-    marketing_impact = (adj_marketing * 0.05) * base_rev / 100
-    price_impact = (adj_price * -1.5) * base_rev / 100 # Assuming 1.5 price elasticity
-    
-    projected_rev = base_rev + marketing_impact + price_impact
-    
-    # Comparison Chart
-    comparison_df = pd.DataFrame({
-        "Scenario": ["Current (Actual)", "Projected (Simulated)"],
-        "Revenue": [base_rev, projected_rev]
-    })
-    
-    fig_sim = px.bar(comparison_df, x="Scenario", y="Revenue", 
-                    color="Scenario", text_auto='.2s',
-                    color_discrete_map={"Current (Actual)": "#7f8c8d", "Projected (Simulated)": "#27ae60"})
+    fig_sim = go.Figure()
+    fig_sim.add_trace(go.Scatter(x=df["Month"], y=df["Revenue"], name="Current Trend", line=dict(dash='dash')))
+    fig_sim.add_trace(go.Scatter(x=df["Month"], y=simulated_rev, name="Projected Recovery", line=dict(width=4, color='#10b981')))
+    fig_sim.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color="white")
     st.plotly_chart(fig_sim, use_container_width=True)
-    
-    if projected_rev > base_rev:
-        st.success(f"✅ Strategy Result: Expected Gain of **${(projected_rev - base_rev):,.2f}** next month.")
-    else:
-        st.error(f"⚠️ Strategy Result: Potential further loss of **${(base_rev - projected_rev):,.2f}**.")
 
-# --- ROW 3: DYNAMIC RECOMMENDATIONS ---
-st.divider()
+# --- ACTION PLAN SECTION ---
+st.write("---")
 st.subheader("📋 AI-Generated Action Plan")
-
-# Logic-based recommendations
-recs = []
-if df["Competitor_Activity"].iloc[-1] > 7:
-    recs.append("**Aggressive Retention:** Launch a loyalty discount to counter competitor poaching.")
-if adj_marketing < 20:
-    recs.append("**Visibility Gap:** Increase top-of-funnel spend by at least 25% to stabilize lead flow.")
-if adj_price > 5:
-    recs.append("**Margin Risk:** High price increases may accelerate churn. Consider 'Value Bundling' instead.")
-
-for r in recs:
-    st.markdown(f"- {r}")
-
-# --- DOWNLOAD REPORT ---
-st.sidebar.divider()
-st.sidebar.download_button("Export Analysis (CSV)", df.to_csv(), "sales_analysis.csv")
+with st.expander("✅ Multi-step roadmap for Q3 Recovery", expanded=True):
+    st.markdown("""
+    1. **Immediate:** Price match competitor 'Tier A' offerings (Est. +4% Retention).
+    2. **Short-term:** Reallocate $10k from Print to Social Retargeting.
+    3. **Operational:** Implement automated churn alerts for high-value accounts.
+    """)
